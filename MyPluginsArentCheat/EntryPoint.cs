@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Linq;
 using System.Reflection;
 using Dalamud.IoC;
-using Dalamud.Logging;
 using Dalamud.Plugin;
 using ExposedObject;
-using Newtonsoft.Json.Linq;
 
 namespace MyPluginsArentCheat;
 
@@ -23,7 +20,7 @@ public class EntryPoint : IDalamudPlugin
                                         .MakeGenericType(pi.GetType().Assembly.GetType("Dalamud.Plugin.Internal.PluginManager", true)))
                                 .Get();
         _stateEnum = pi.GetType().Assembly.GetType("Dalamud.Plugin.Internal.Types.PluginState");
-        
+
         RemoveBannedPlugins();
         UnbanInstalledPlugins();
     }
@@ -58,7 +55,7 @@ public class EntryPoint : IDalamudPlugin
             }
 
             var banned = localPlugin.GetType().GetProperty("IsBanned", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)?.GetValue(localPlugin);
-            if ((bool)banned!) 
+            if ((bool)banned!)
                 localPlugin.GetType().GetField("<IsBanned>k__BackingField", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)?.SetValue(localPlugin, false);
             /*banned = localPlugin.GetType().GetProperty("IsBanned", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)?.GetValue(localPlugin);
             PluginLog.Warning($"{localPlugin.GetType().GetProperty("Name", BindingFlags.Public | BindingFlags.Instance)?.GetValue(localPlugin)} / {banned}");*/
