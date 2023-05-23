@@ -13,6 +13,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="DalamudPackager" Version="2.1.11" />
+		<PackageReference Include="ExposedObject" Version="2.1.0" />
 	</ItemGroup>
 
 	<PropertyGroup>
