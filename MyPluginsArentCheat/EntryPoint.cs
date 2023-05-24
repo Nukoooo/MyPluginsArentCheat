@@ -6,7 +6,7 @@ using ExposedObject;
 
 namespace MyPluginsArentCheat;
 
-// Credit goes to NightmareXiv
+// Credit goes to NightmareXiv for awesome ExposedObject in their UnloadErrorFuckoff
 
 public class EntryPoint : IDalamudPlugin
 {
@@ -15,14 +15,14 @@ public class EntryPoint : IDalamudPlugin
 
     public EntryPoint([RequiredVersion("1.0")] DalamudPluginInterface pi)
     {
-        _pluginManager = Exposed.From(pi.GetType()
-                                        .Assembly.GetType("Dalamud.Service`1", true)
-                                        .MakeGenericType(pi.GetType().Assembly.GetType("Dalamud.Plugin.Internal.PluginManager", true)))
+        _pluginManager = Exposed.From(pi.GetType().Assembly.GetType("Dalamud.Service`1", true)!.MakeGenericType(pi.GetType().Assembly.GetType("Dalamud.Plugin.Internal.PluginManager", true)!))
                                 .Get();
+
         _stateEnum = pi.GetType().Assembly.GetType("Dalamud.Plugin.Internal.Types.PluginState");
 
         RemoveBannedPlugins();
         UnbanInstalledPlugins();
+        NoMeasurementYo();
     }
 
     public string Name => "MyPluginsArentCheat";
@@ -30,6 +30,12 @@ public class EntryPoint : IDalamudPlugin
     public void Dispose()
     {
         GC.SuppressFinalize(this);
+    }
+
+    internal static object GetService(string name)
+    {
+        return typeof(IDalamudPlugin).Assembly.GetType("Dalamud.Service`1")!.MakeGenericType(typeof(IDalamudPlugin).Assembly.GetType(name)!)
+                                     .GetMethod("Get", BindingFlags.Static | BindingFlags.Public)!.Invoke(null, null)!;
     }
 
     private void RemoveBannedPlugins()
@@ -57,8 +63,12 @@ public class EntryPoint : IDalamudPlugin
             var banned = localPlugin.GetType().GetProperty("IsBanned", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)?.GetValue(localPlugin);
             if ((bool)banned!)
                 localPlugin.GetType().GetField("<IsBanned>k__BackingField", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)?.SetValue(localPlugin, false);
-            /*banned = localPlugin.GetType().GetProperty("IsBanned", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)?.GetValue(localPlugin);
-            PluginLog.Warning($"{localPlugin.GetType().GetProperty("Name", BindingFlags.Public | BindingFlags.Instance)?.GetValue(localPlugin)} / {banned}");*/
         }
+    }
+
+    private static void NoMeasurementYo()
+    {
+        var chatHandler = GetService("Dalamud.Game.ChatHandlers");
+        chatHandler.SetFieldValue("hasSendMeasurement", true);
     }
 }
