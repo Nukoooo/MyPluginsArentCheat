@@ -4,5 +4,6 @@
   "Description": "say haiihaii to banned dalamud plugins uwu",
   "RepoUrl": "",
   "Tags": [],
-  "PunchLine": "say haiihaii to banned dalamud plugins uwu"
+  "PunchLine": "say haiihaii to banned dalamud plugins uwu",
+  "DalamudApiLevel": 10
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Reflection;
-using Dalamud.IoC;
 using Dalamud.Plugin;
 using ExposedObject;
 
@@ -13,7 +12,7 @@ public class EntryPoint : IDalamudPlugin
     private readonly object _pluginManager;
     private readonly Type _stateEnum;
 
-    public EntryPoint([RequiredVersion("1.0")] DalamudPluginInterface pi)
+    public EntryPoint(IDalamudPluginInterface pi)
     {
         _pluginManager = Exposed.From(pi.GetType().Assembly.GetType("Dalamud.Service`1", true)!.MakeGenericType(pi.GetType().Assembly.GetType("Dalamud.Plugin.Internal.PluginManager", true)!))
                                 .Get();
