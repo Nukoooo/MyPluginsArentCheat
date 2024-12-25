@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Threading.Tasks;
 using Dalamud.Plugin;
 using ExposedObject;
 
@@ -45,7 +46,7 @@ public class EntryPoint : IDalamudPlugin
         bannedPlugins.SetValue(_pluginManager, emptyArray);
     }
 
-    private void UnbanInstalledPlugins()
+    private async void UnbanInstalledPlugins()
     {
         var installedPlugins = Exposed.From(_pluginManager).InstalledPlugins;
         foreach (var plugin in installedPlugins)
@@ -55,8 +56,11 @@ public class EntryPoint : IDalamudPlugin
             if (state == "LoadError")
             {
                 localPlugin.GetType().GetProperty("State", BindingFlags.Public | BindingFlags.Instance)?.SetValue(localPlugin, _stateEnum.GetEnumValues().GetValue(0));
-                var manifest = localPlugin.GetType().GetProperty("Manifest", BindingFlags.Public | BindingFlags.Instance)?.GetValue(localPlugin);
-                manifest!.GetType().GetProperty("Disabled", BindingFlags.Public | BindingFlags.Instance)!.SetValue(manifest, true);
+                var loadMethod = localPlugin.GetType().GetMethod("LoadAsync");
+                if (loadMethod != null)
+                {
+                    await (Task) loadMethod.Invoke(localPlugin, [3, false]);
+                }
             }
 
             var banned = localPlugin.GetType().GetProperty("IsBanned", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)?.GetValue(localPlugin);
