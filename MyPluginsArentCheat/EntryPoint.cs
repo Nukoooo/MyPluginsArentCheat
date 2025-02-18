@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Threading.Tasks;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 using ExposedObject;
 
 namespace MyPluginsArentCheat;
@@ -10,11 +11,18 @@ namespace MyPluginsArentCheat;
 
 public class EntryPoint : IDalamudPlugin
 {
-    private readonly object _pluginManager;
-    private readonly Type _stateEnum;
+    private readonly object       _pluginManager;
+    private readonly Type         _stateEnum;
+    private readonly IClientState _clientState;
+    private readonly IFramework   _framework;
+    private readonly IPluginLog   _logger;
 
-    public EntryPoint(IDalamudPluginInterface pi)
+    public EntryPoint(IDalamudPluginInterface pi, IClientState clientState, IFramework framework, IPluginLog log)
     {
+        _clientState = clientState;
+        _framework   = framework;
+        _logger      = log;
+
         _pluginManager = Exposed.From(pi.GetType().Assembly.GetType("Dalamud.Service`1", true)!.MakeGenericType(pi.GetType().Assembly.GetType("Dalamud.Plugin.Internal.PluginManager", true)!))
                                 .Get();
 
@@ -23,16 +31,25 @@ public class EntryPoint : IDalamudPlugin
         RemoveBannedPlugins();
         UnbanInstalledPlugins();
         NoMeasurementYo();
+
+        _clientState.Login  += NoMeasurementYo;
+        _clientState.Logout += OnLogout;
     }
 
-    public string Name => "MyPluginsArentCheat";
+    private void OnLogout(int type, int code)
+    {
+        _framework.RunOnTick(NoMeasurementYo, TimeSpan.FromMilliseconds(50));
+    }
 
     public void Dispose()
     {
         GC.SuppressFinalize(this);
+
+        _clientState.Login  -= NoMeasurementYo;
+        _clientState.Logout -= OnLogout;
     }
 
-    internal static object GetService(string name)
+    private static object GetService(string name)
     {
         return typeof(IDalamudPlugin).Assembly.GetType("Dalamud.Service`1")!.MakeGenericType(typeof(IDalamudPlugin).Assembly.GetType(name)!)
                                      .GetMethod("Get", BindingFlags.Static | BindingFlags.Public)!.Invoke(null, null)!;
@@ -46,7 +63,7 @@ public class EntryPoint : IDalamudPlugin
         bannedPlugins.SetValue(_pluginManager, emptyArray);
     }
 
-    private async void UnbanInstalledPlugins()
+    private async Task UnbanInstalledPlugins()
     {
         var installedPlugins = Exposed.From(_pluginManager).InstalledPlugins;
         foreach (var plugin in installedPlugins)
@@ -69,9 +86,11 @@ public class EntryPoint : IDalamudPlugin
         }
     }
 
-    private static void NoMeasurementYo()
+    private void NoMeasurementYo()
     {
-        var chatHandler = GetService("Dalamud.Game.ChatHandlers");
+        var chatHandler  = GetService("Dalamud.Game.ChatHandlers");
+        var originalVale = chatHandler.GetFieldValue<bool>("hasSendMeasurement");
         chatHandler.SetFieldValue("hasSendMeasurement", true);
+        _logger.Info($"hasSendMeasurement: {originalVale} -> {chatHandler.GetFieldValue<bool>("hasSendMeasurement")}");
     }
 }
