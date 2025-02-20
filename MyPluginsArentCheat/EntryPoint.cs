@@ -68,21 +68,39 @@ public class EntryPoint : IDalamudPlugin
         var installedPlugins = Exposed.From(_pluginManager).InstalledPlugins;
         foreach (var plugin in installedPlugins)
         {
-            var localPlugin = (object)plugin;
-            var state = localPlugin.GetType().GetProperty("State", BindingFlags.Public | BindingFlags.Instance)?.GetValue(localPlugin)?.ToString();
-            if (state == "LoadError")
+            object localPlugin = plugin;
+            Type pluginType = localPlugin.GetType();
+            var state = pluginType.GetProperty("State", BindingFlags.Public | BindingFlags.Instance)?.GetValue(localPlugin)?.ToString();
+            var isBanned = (bool)(pluginType.GetProperty("IsBanned", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)?.GetValue(localPlugin) ?? false);
+            var isWantedByAnyProfile = (bool)(pluginType.GetProperty("IsWantedByAnyProfile", BindingFlags.Instance | BindingFlags.Public)?.GetValue(plugin) ?? false);
+
+            if (isBanned)
             {
-                localPlugin.GetType().GetProperty("State", BindingFlags.Public | BindingFlags.Instance)?.SetValue(localPlugin, _stateEnum.GetEnumValues().GetValue(0));
-                var loadMethod = localPlugin.GetType().GetMethod("LoadAsync");
-                if (loadMethod != null)
+                if (pluginType.Name != "LocalDevPlugin")
                 {
-                    await (Task) loadMethod.Invoke(localPlugin, [3, false]);
+                    pluginType
+                        .GetField("<IsBanned>k__BackingField",
+                            BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
+                        ?.SetValue(localPlugin, false);
+                }
+                else
+                {
+                    pluginType.BaseType?.GetField("<IsBanned>k__BackingField",
+                            BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
+                        ?.SetValue(localPlugin, false);
+                }
+            
+                if (state is "LoadError" or "Unloaded" && isWantedByAnyProfile)
+                {
+                    pluginType.GetProperty("State", BindingFlags.Public | BindingFlags.Instance)
+                        ?.SetValue(localPlugin, _stateEnum.GetEnumValues().GetValue(0));
+                    var loadMethod = localPlugin.GetType().GetMethod("LoadAsync");
+                    if (loadMethod != null)
+                    {
+                        await (Task)loadMethod.Invoke(localPlugin, [3, false]);
+                    }
                 }
             }
-
-            var banned = localPlugin.GetType().GetProperty("IsBanned", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)?.GetValue(localPlugin);
-            if ((bool)banned!)
-                localPlugin.GetType().GetField("<IsBanned>k__BackingField", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)?.SetValue(localPlugin, false);
         }
     }
 
