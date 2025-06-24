@@ -11,17 +11,19 @@ namespace MyPluginsArentCheat;
 
 public class EntryPoint : IDalamudPlugin
 {
-    private readonly object       _pluginManager;
-    private readonly Type         _stateEnum;
-    private readonly IClientState _clientState;
-    private readonly IFramework   _framework;
-    private readonly IPluginLog   _logger;
+    private readonly object                  _pluginManager;
+    private readonly Type                    _stateEnum;
+    private readonly IClientState            _clientState;
+    private readonly IFramework              _framework;
+    private readonly IPluginLog              _logger;
+    private readonly IDalamudPluginInterface _pi;
 
     public EntryPoint(IDalamudPluginInterface pi, IClientState clientState, IFramework framework, IPluginLog log)
     {
         _clientState = clientState;
         _framework   = framework;
         _logger      = log;
+        _pi          = pi;
 
         _pluginManager = Exposed.From(pi.GetType().Assembly.GetType("Dalamud.Service`1", true)!.MakeGenericType(pi.GetType().Assembly.GetType("Dalamud.Plugin.Internal.PluginManager", true)!))
                                 .Get();
@@ -29,10 +31,9 @@ public class EntryPoint : IDalamudPlugin
         _stateEnum = pi.GetType().Assembly.GetType("Dalamud.Plugin.Internal.Types.PluginState");
 
         RemoveBannedPlugins();
-        UnbanInstalledPlugins();
-        NoMeasurementYo();
+        Task.Run(UnbanInstalledPlugins);
 
-        _clientState.Login  += NoMeasurementYo;
+        NoMeasurementYo();
         _clientState.Logout += OnLogout;
     }
 
@@ -45,7 +46,6 @@ public class EntryPoint : IDalamudPlugin
     {
         GC.SuppressFinalize(this);
 
-        _clientState.Login  -= NoMeasurementYo;
         _clientState.Logout -= OnLogout;
     }
 
@@ -75,6 +75,11 @@ public class EntryPoint : IDalamudPlugin
             var state = pluginType.GetProperty("State", BindingFlags.Public | BindingFlags.Instance)?.GetValue(localPlugin)
                                   ?.ToString();
 
+            if (string.IsNullOrWhiteSpace(state))
+            {
+                continue;
+            }
+
             var isBanned = (bool) (pluginType
                                    .GetProperty("IsBanned",
                                                 BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
@@ -86,43 +91,64 @@ public class EntryPoint : IDalamudPlugin
                                     ?.GetValue(plugin)
                           ?? false);
 
-            if (isBanned)
+            if (!isBanned)
             {
-                if (pluginType.Name != "LocalDevPlugin")
-                {
-                    pluginType
-                        .GetField("<IsBanned>k__BackingField",
-                                  BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
-                        ?.SetValue(localPlugin, false);
-                }
-                else
-                {
-                    pluginType.BaseType?.GetField("<IsBanned>k__BackingField",
-                                                  BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
-                              ?.SetValue(localPlugin, false);
-                }
+                continue;
+            }
 
-                if (state is "LoadError" or "Unloaded" && isWantedByAnyProfile)
+            if (pluginType.Name != "LocalDevPlugin")
+            {
+                pluginType
+                    .GetField("<IsBanned>k__BackingField",
+                              BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
+                    ?.SetValue(localPlugin, false);
+            }
+            else
+            {
+                pluginType.BaseType?.GetField("<IsBanned>k__BackingField",
+                                              BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance)
+                          ?.SetValue(localPlugin, false);
+            }
+
+            var correctState = state.ToLowerInvariant() is "loaderror" or "unloaded";
+
+            if (!correctState)
+            {
+                continue;
+            }
+
+            if (!isWantedByAnyProfile)
+            {
+                continue;
+            }
+
+            try
+            {
+                pluginType.GetProperty("State", BindingFlags.Public | BindingFlags.Instance)
+                          ?.SetValue(localPlugin, _stateEnum.GetEnumValues().GetValue(0));
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e, "Error when trying to set state!!!");
+            }
+
+            try
+            {
+                var loadMethod = localPlugin.GetType().GetMethod("LoadAsync");
+
+                if (loadMethod != null)
                 {
-                    pluginType.GetProperty("State", BindingFlags.Public | BindingFlags.Instance)
-                              ?.SetValue(localPlugin, _stateEnum.GetEnumValues().GetValue(0));
-
-                    var loadMethod = localPlugin.GetType().GetMethod("LoadAsync");
-
-                    if (loadMethod != null)
-                    {
-                        await (Task) loadMethod.Invoke(localPlugin, [3, false]);
-                    }
+                    await (Task) loadMethod.Invoke(localPlugin, [3, false]);
                 }
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e, "Error when trying to invoke loadmethod");
             }
         }
     }
 
     private void NoMeasurementYo()
     {
-        var chatHandler  = GetService("Dalamud.Game.ChatHandlers");
-        var originalVale = chatHandler.GetFieldValue<bool>("hasSendMeasurement");
-        chatHandler.SetFieldValue("hasSendMeasurement", true);
-        _logger.Info($"hasSendMeasurement: {originalVale} -> {chatHandler.GetFieldValue<bool>("hasSendMeasurement")}");
     }
 }
