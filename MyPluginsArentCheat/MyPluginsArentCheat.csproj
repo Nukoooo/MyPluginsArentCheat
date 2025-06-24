@@ -1,9 +1,8 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+﻿
+<Project Sdk="Dalamud.NET.Sdk/12.0.2">
 	<PropertyGroup>
-		<TargetFramework>net8.0-windows8.0</TargetFramework>
 		<LangVersion>latest</LangVersion>
-		<Version>1.0.0.6</Version>
+		<Version>1.0.0.7</Version>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -12,46 +11,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="DalamudPackager" Version="11.0.0" />
 		<PackageReference Include="ExposedObject" Version="2.1.0" />
-	</ItemGroup>
-
-	<PropertyGroup>
-		<DalamudLibPath>$(appdata)\XIVLauncherCN\addon\Hooks\dev</DalamudLibPath>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-	</PropertyGroup>
-
-	<ItemGroup>
-		<!--You may need to adjust these paths yourself. These point to a Dalamud assembly in AppData.-->
-		<Reference Include="Dalamud">
-			<HintPath>$(DalamudLibPath)\Dalamud.dll</HintPath>
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="ImGui.NET">
-			<HintPath>$(DalamudLibPath)\ImGui.NET.dll</HintPath>
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="ImGuiScene">
-			<HintPath>$(DalamudLibPath)\ImGuiScene.dll</HintPath>
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="Lumina">
-			<HintPath>$(DalamudLibPath)\Lumina.dll</HintPath>
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="Lumina.Excel">
-			<HintPath>$(DalamudLibPath)\Lumina.Excel.dll</HintPath>
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="Newtonsoft.Json">
-			<HintPath>$(DalamudLibPath)\Newtonsoft.Json.dll</HintPath>
-			<Private>false</Private>
-		</Reference>
-		<Reference Include="FFXIVClientStructs">
-			<HintPath>$(DalamudLibPath)\FFXIVClientStructs.dll</HintPath>
-			<Private>false</Private>
-		</Reference>
 	</ItemGroup>
 
 </Project>
